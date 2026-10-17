@@ -631,7 +631,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) flush(); });
 
   $('linkBtn').addEventListener('click', function () {
-    var u = window.prompt('시트의 웹 앱 주소를 붙여넣으세요\n(https://script.google.com/…/exec)', getUrl());
+    var u = window.prompt('시트의 웹 앱 주소를 붙여넣으세요\n(https://script.google.com/macros/s/AKfycbzbhXxEzeJga3st9JxCxfrXprhQDKmpsaMHQWVLYu4C-pkSccHoNn4HCMdEY6csd5hFtg/exec)', getUrl());
     if (u === null) return;
     u = u.trim();
     if (!u) {
