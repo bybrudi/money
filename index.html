@@ -146,7 +146,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
 .sheet .cancel { margin-top: 8px; border: 0; border-radius: 4px; font-weight: 300; box-shadow: 0 0 40px rgba(0,0,0,.14); }
 
 /* 토스트 */
-.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); transform: translate(-50%, 20px); background: var(--text); color: #fff; padding: 10px 16px; border-radius: 4px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60; white-space: nowrap; font-weight: 400; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); transform: translate(-50%, 20px); background: var(--text); color: #fff; padding: 10px 16px; border-radius: 4px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60; width: max-content; max-width: calc(100vw - 48px); text-align: center; font-weight: 400; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -284,7 +284,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, msg.length > 16 ? 3800 : 1800);
   }
 
   /* ---------- 확인 시트 ---------- */
@@ -562,33 +562,57 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
   /* ---------- 구글 시트 연동 ---------- */
   var SURL = 'ledger.sheetUrl';
   var PEND = 'ledger.pending';
+  var OKF = 'ledger.sheetOk';
   function getUrl() { try { return localStorage.getItem(SURL) || ''; } catch (e) { return ''; } }
   function getPend() { try { return JSON.parse(localStorage.getItem(PEND)) || {}; } catch (e) { return {}; } }
   function setPend(o) { try { localStorage.setItem(PEND, JSON.stringify(o)); } catch (e) {} }
+  function getOk() { try { return localStorage.getItem(OKF) || ''; } catch (e) { return ''; } }
+  function setOk(v) { try { localStorage.setItem(OKF, v); } catch (e) {} }
 
   function updateNote() {
     var note = $('syncNote'), btn = $('linkBtn');
     if (!getUrl()) {
       note.textContent = '시트가 연결되지 않았어요. 연결하면 자동으로 저장돼요.';
       btn.textContent = '시트 연결하기';
+    } else if (getOk() === '0') {
+      note.textContent = '시트 연결에 문제가 있어요. 주소와 코드를 확인해 주세요.';
+      btn.textContent = '시트 연결 변경';
+    } else if (getOk() !== '1') {
+      note.textContent = '시트 연결을 확인하는 중이에요';
+      btn.textContent = '시트 연결 변경';
     } else {
       note.textContent = Object.keys(getPend()).length ? '시트에 저장 대기 중이에요' : '시트에 자동 저장 중이에요';
       btn.textContent = '시트 연결 변경';
     }
   }
 
-  // 시트로 보내기. 같은 내용을 여러 번 보내도 결과가 같아서 안전해요.
-  function post(body) {
+  // 시트 연결 확인: 시트가 정상 응답하면 true
+  function check() {
     var url = getUrl();
     if (!url) return Promise.resolve(false);
+    return fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'action=all')
+      .then(function (r) { return r.json(); })
+      .then(function (j) { return !!(j && j.ok); })
+      .catch(function () { return false; });
+  }
+
+  // 시트로 보내기. 같은 내용을 여러 번 보내도 결과가 같아서 안전해요.
+  // 결과: ok(확인됨) / unknown(보냈지만 확인 불가) / bad(시트가 오류로 응답) / fail(인터넷 문제)
+  function post(body) {
+    var url = getUrl();
+    if (!url) return Promise.resolve('fail');
     var headers = { 'Content-Type': 'text/plain;charset=utf-8' };
     var text = JSON.stringify(body);
     return fetch(url, { method: 'POST', headers: headers, body: text })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { return !!(j && j.ok); })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var j = null;
+        try { j = JSON.parse(t); } catch (e) {}
+        return (j && j.ok) ? 'ok' : 'bad';
+      })
       .catch(function () {
         return fetch(url, { method: 'POST', mode: 'no-cors', headers: headers, body: text })
-          .then(function () { return true; }, function () { return false; });
+          .then(function () { return 'unknown'; }, function () { return 'fail'; });
       });
   }
 
@@ -612,53 +636,72 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
       var body = null;
       if (kind === 'delete') body = { action: 'delete', key: k };
       else if (state.months[k]) body = { action: 'month', key: k, items: state.months[k] };
-      if (!body) return Promise.resolve({ k: k, ok: true });
-      return post(body).then(function (ok) { return { k: k, ok: ok }; });
+      if (!body) return Promise.resolve({ k: k, st: 'ok' });
+      return post(body).then(function (st) { return { k: k, st: st }; });
     })).then(function (results) {
       var cur = getPend();
-      var retry = false;
       results.forEach(function (r) {
-        if (r.ok) { if (cur[r.k] === p[r.k]) delete cur[r.k]; }
-        else retry = true;
+        var done = r.st === 'ok' || (r.st === 'unknown' && getOk() === '1');
+        if (r.st === 'ok') setOk('1');
+        if (r.st === 'bad') setOk('0');
+        if (done && cur[r.k] === p[r.k]) delete cur[r.k];
       });
       setPend(cur);
       flushing = false;
       updateNote();
-      if (Object.keys(cur).length && !retry) { clearTimeout(syncTimer); syncTimer = setTimeout(flush, 300); }
     });
   }
-  window.addEventListener('online', flush);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) flush(); });
+  window.addEventListener('online', function () { startCheck(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) startCheck(); });
+
+  // 연결을 확인하고, 정상이면 밀린 저장을 보내요
+  function startCheck() {
+    if (!getUrl() || !navigator.onLine) return;
+    check().then(function (ok) {
+      setOk(ok ? '1' : '0');
+      updateNote();
+      if (ok) flush();
+    });
+  }
+
+  function reportBackup(st) {
+    if (st === 'ok') { setOk('1'); setPend({}); toast('시트에 저장했어요'); }
+    else if (st === 'unknown') {
+      if (getOk() === '1') { setPend({}); toast('시트로 보냈어요. 시트에서 확인해 주세요'); }
+      else toast('시트 연결을 확인하지 못했어요. 코드와 배포를 다시 확인해 주세요');
+    }
+    else if (st === 'bad') { setOk('0'); toast('시트 코드에 문제가 있어요. 설정을 다시 확인해 주세요'); }
+    else toast('저장하지 못했어요. 인터넷을 확인해 주세요');
+    updateNote();
+  }
 
   $('linkBtn').addEventListener('click', function () {
-    var u = window.prompt('시트의 웹 앱 주소를 붙여넣으세요\n(https://script.google.com/macros/s/AKfycbyVBFGvpvwHk60Gb-hxWY_31aEErmBeA6LHqfaffX0bBH6VrukaowFjeNka7blqBb7Hug/exec)', getUrl());
+    var u = window.prompt('시트의 웹 앱 주소를 붙여넣으세요\n(https://script.google.com/…/exec)', getUrl());
     if (u === null) return;
     u = u.trim();
     if (!u) {
-      try { localStorage.removeItem(SURL); } catch (e) {}
+      try { localStorage.removeItem(SURL); localStorage.removeItem(OKF); } catch (e) {}
       updateNote();
       toast('시트 연결을 해제했어요');
       return;
     }
     if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(u)) { toast('주소가 올바르지 않아요'); return; }
-    try { localStorage.setItem(SURL, u); } catch (e) {}
+    try { localStorage.setItem(SURL, u); localStorage.removeItem(OKF); } catch (e) {}
     updateNote();
-    toast('연결했어요. 내역을 시트로 보내는 중…');
-    post({ action: 'all', months: state.months }).then(function (ok) {
-      if (ok) setPend({});
-      toast(ok ? '시트에 저장했어요' : '저장하지 못했어요. 인터넷을 확인해 주세요');
+    toast('시트 연결을 확인하는 중…');
+    check().then(function (ok) {
+      setOk(ok ? '1' : '0');
       updateNote();
+      if (!ok) { toast('시트 연결을 확인하지 못했어요. 시트에 코드를 붙여넣고 새 버전으로 배포했는지 확인해 주세요'); return; }
+      toast('연결됐어요. 내역을 시트로 보내는 중…');
+      post({ action: 'all', months: state.months }).then(reportBackup);
     });
   });
 
   $('exportBtn').addEventListener('click', function () {
     if (!getUrl()) { toast('먼저 시트를 연결해 주세요'); return; }
     toast('시트로 보내는 중…');
-    post({ action: 'all', months: state.months }).then(function (ok) {
-      if (ok) setPend({});
-      toast(ok ? '시트에 저장했어요' : '저장하지 못했어요. 인터넷을 확인해 주세요');
-      updateNote();
-    });
+    post({ action: 'all', months: state.months }).then(reportBackup);
   });
 
   $('importBtn').addEventListener('click', function () {
@@ -669,6 +712,8 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j || !j.ok || !j.months) throw new Error('bad');
+        setOk('1');
+        updateNote();
         if (!Object.keys(j.months).length) { toast('시트에 불러올 내역이 없어요'); return; }
         var parsed = normalize({ current: state.current, months: j.months });
         if (!parsed) throw new Error('bad');
@@ -682,7 +727,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
           toast('불러왔어요');
         });
       })
-      .catch(function () { toast('불러오지 못했어요. 시트 주소를 확인해 주세요'); });
+      .catch(function () { toast('불러오지 못했어요. 시트 주소와 배포를 확인해 주세요'); });
   });
 
   /* ---------- 시작 ---------- */
@@ -692,7 +737,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
   renderAmount();
   renderMain();
   updateNote();
-  flush();
+  startCheck();
 })();
 </script>
 </body>
