@@ -12,15 +12,18 @@
 <title>가계부</title>
 <style>
 :root {
+  --gap: 18px;
+  --gap2: 6px;
   --bg: #ffffff;
   --btn: #f3f3f3;
   --btn-press: #e5e5e5;
-  --text: #1a1a1a;
+  --text: #2a2a2a;
   --sub: #8a8a8a;
   --line: #e5e5e5;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
+html { overflow-x: hidden; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   font-size: 15px;
@@ -45,29 +48,37 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .round:active { background: transparent; opacity: .4; }
 
 /* 누적 금액 */
-.total { margin-top: 8px; background: var(--btn); border-radius: 4px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: baseline; }
+.total { margin-top: 8px; background: var(--btn); border-radius: 4px; height: 48px; padding: 0 16px; display: flex; justify-content: space-between; align-items: center; }
 .total span { font-size: 14px; }
 .total strong { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
 
 /* 라벨 */
-.label { margin: 22px 4px 8px; font-size: 12px; color: var(--sub); display: flex; justify-content: space-between; align-items: center; min-height: 28px; }
-.datepill { position: relative; background: var(--btn); border-radius: 4px; padding: 3px 11px; font-size: 12px; color: var(--text); }
-.datepill input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; border: 0; background: transparent; }
+.label { margin: var(--gap) 4px 11px; font-size: 12px; line-height: 12px; color: var(--sub); display: flex; justify-content: space-between; align-items: flex-start; }
+.label.lead { height: 22px; align-items: center; margin-bottom: var(--gap2); }
+.datepill { position: relative; overflow: hidden; background: var(--btn); border-radius: 4px; height: 22px; padding: 0 11px; display: flex; align-items: center; line-height: 1; font-size: 12px; color: var(--text); }
+.datepill input { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; max-width: 100%; opacity: 0; font-size: 16px; border: 0; background: transparent; -webkit-appearance: none; appearance: none; }
 
 /* 입력 */
-.field { width: 100%; height: 48px; border: 0; border-radius: 4px; background: var(--btn); padding: 0 16px; font: inherit; font-size: 16px; color: var(--text); -webkit-appearance: none; appearance: none; }
-.amountrow { display: flex; align-items: center; gap: 8px; background: var(--btn); border-radius: 4px; padding: 6px 6px 6px 16px; min-height: 48px; }
+.field { display: block; width: 100%; height: 48px; border: 0; border-radius: 4px; background: var(--btn); padding: 0 16px; font: inherit; font-size: 16px; color: var(--text); -webkit-appearance: none; appearance: none; }
+.amountrow { display: flex; align-items: center; gap: 6px; background: var(--btn); border-radius: 4px; padding: 6px; min-height: 48px; }
 .amountval { flex: 1; min-width: 0; text-align: right; font-size: 17px; font-weight: 300; letter-spacing: -0.01em; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
 .amountval::-webkit-scrollbar { display: none; }
 .amountval.empty { color: var(--sub); }
 .amountrow button { height: 36px; border-radius: 4px; font-size: 14px; background: var(--bg); }
 .amountrow button:active { background: var(--btn-press); }
-.mini { width: 44px; display: grid; place-items: center; }
+.paypick { display: flex; gap: 3px; }
+.amountrow .paypick button { width: 38px; height: 36px; padding: 0; font-size: 12px; color: var(--sub); }
+.amountrow .paypick button.on { background: #e0e0e0; color: var(--text); }
+.amountrow .paypick button.on:active { background: #d4d4d4; }
+.subtotals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap2); margin-top: var(--gap2); }
+.subtotals div { background: var(--btn); border-radius: 4px; padding: 6px 4px; display: flex; justify-content: center; gap: 7px; font-size: 12px; color: var(--sub); min-width: 0; white-space: nowrap; overflow: hidden; }
+.subtotals b { font-weight: 300; color: var(--sub); font-variant-numeric: tabular-nums; }
+.mini { width: 38px; padding: 0; display: grid; place-items: center; }
 .mini svg { width: 20px; height: 20px; }
-.okbtn { padding: 0 18px; font-weight: 300; }
+.amountrow .okbtn { width: 38px; padding: 0; margin-left: -3px; font-size: 12px; font-weight: 300; }
 
 /* 계산기 */
-.pad { margin-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px; background: #f3f3f3; border-radius: 4px; }
+.pad { margin-top: var(--gap2); display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px; background: #f3f3f3; border-radius: 4px; }
 .pad button { height: 51px; border-radius: 4px; border: 1px solid #e5e5e5; border-bottom-color: #cccccc; background: #ffffff; font-size: 17px; font-weight: 300; }
 .pad button:active { background: #ececec; }
 .pad button svg { display: block; margin: 0 auto; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.1; stroke-linecap: round; pointer-events: none; }
@@ -78,8 +89,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* 내용 리스트 */
 .list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.list li { display: grid; grid-template-columns: 54px 1fr auto 40px; align-items: center; min-height: 48px; border-bottom: 1px solid var(--line); font-size: 14px; }
-.list .d { color: var(--sub); font-size: 13px; font-variant-numeric: tabular-nums; }
+.list li { display: grid; grid-template-columns: 42px auto 1fr auto 40px; column-gap: 6px; align-items: center; min-height: 48px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.list .d { position: relative; overflow: hidden; display: flex; align-items: center; height: 36px; color: var(--sub); font-size: 13px; font-variant-numeric: tabular-nums; }
+.list .d input { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; max-width: 100%; opacity: 0; font-size: 16px; border: 0; background: transparent; -webkit-appearance: none; appearance: none; }
+.list .p { height: 24px; padding: 0 8px; border-radius: 4px; font-size: 12px; color: var(--sub); }
 .list .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
 .list .m.none { color: var(--sub); }
 .list .a { font-variant-numeric: tabular-nums; font-weight: 300; }
@@ -165,8 +178,13 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     <span>이번달 누적 금액</span>
     <strong id="total">0원</strong>
   </section>
+  <div class="subtotals">
+    <div><span>카드</span><b id="sumCard">0</b></div>
+    <div><span>현금</span><b id="sumCash">0</b></div>
+    <div><span>기타</span><b id="sumEtc">0</b></div>
+  </div>
 
-  <div class="label">
+  <div class="label lead">
     <span>내용</span>
     <div class="datepill" id="datePill"><span id="dateText"></span><input type="date" id="dateInput" aria-label="날짜 선택"></div>
   </div>
@@ -174,6 +192,11 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
 
   <div class="label"><span>금액</span></div>
   <div class="amountrow">
+    <div class="paypick" id="paypick">
+      <button type="button" data-pay="card">카드</button>
+      <button type="button" data-pay="cash">현금</button>
+      <button type="button" data-pay="etc">기타</button>
+    </div>
     <div class="amountval empty" id="amount" role="status" aria-label="금액">0</div>
     <button class="mini" id="backBtn" type="button" aria-label="지우기">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="M12.5 10l4 4M16.5 10l-4 4"/></svg>
@@ -248,7 +271,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
       for (var i = 0; i < s.months[k].length; i++) {
         var it = s.months[k][i];
         if (!it || typeof it.date !== 'string' || typeof it.amount !== 'number' || !isFinite(it.amount)) return null;
-        arr.push({ id: typeof it.id === 'number' ? it.id : Date.now() + i, date: it.date, memo: String(it.memo || ''), amount: it.amount });
+        arr.push({ id: typeof it.id === 'number' ? it.id : Date.now() + i, date: it.date, memo: String(it.memo || ''), amount: it.amount, pay: (it.pay === 'card' || it.pay === 'cash') ? it.pay : 'etc' });
       }
       out.months[k] = arr;
     }
@@ -423,6 +446,22 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     renderAmount();
   });
 
+  /* ---------- 결제 종류 ---------- */
+  var PAYS = { card: '카드', cash: '현금', etc: '기타' };
+  var curPay = 'card';
+  try { var lp = localStorage.getItem('ledger.pay'); if (lp && PAYS[lp]) curPay = lp; } catch (e) {}
+  function renderPay() {
+    var bs = document.querySelectorAll('#paypick button');
+    for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-pay') === curPay);
+  }
+  $('paypick').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-pay]');
+    if (!b) return;
+    curPay = b.getAttribute('data-pay');
+    try { localStorage.setItem('ledger.pay', curPay); } catch (err) {}
+    renderPay();
+  });
+
   /* ---------- 내역 추가 ---------- */
   $('okBtn').addEventListener('click', function () {
     var v = evalExpr(expr);
@@ -431,7 +470,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     var list = state.months[state.current];
     var id = Date.now();
     list.forEach(function (it) { if (it.id >= id) id = it.id + 1; });
-    list.push({ id: id, date: selDate, memo: $('memo').value.trim(), amount: Math.round(v) });
+    list.push({ id: id, date: selDate, memo: $('memo').value.trim(), amount: Math.round(v), pay: curPay });
     save();
     mark(state.current, 'save');
     $('memo').value = '';
@@ -453,6 +492,11 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     var sum = 0;
     items.forEach(function (it) { sum += it.amount; });
     $('total').textContent = won(sum);
+    var sums = { card: 0, cash: 0, etc: 0 };
+    items.forEach(function (it) { sums[it.pay in sums ? it.pay : 'etc'] += it.amount; });
+    $('sumCard').textContent = sums.card.toLocaleString('ko-KR');
+    $('sumCash').textContent = sums.cash.toLocaleString('ko-KR');
+    $('sumEtc').textContent = sums.etc.toLocaleString('ko-KR');
 
     var ul = $('list');
     ul.innerHTML = '';
@@ -466,8 +510,30 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     }
     items.forEach(function (it) {
       var li = document.createElement('li');
-      var d = document.createElement('span'); d.className = 'd'; d.textContent = it.date.slice(5).replace('-', '/');
+      var d = document.createElement('span'); d.className = 'd';
+      var dt = document.createElement('span'); dt.textContent = it.date.slice(5).replace('-', '/');
+      var di = document.createElement('input'); di.type = 'date'; di.value = it.date;
+      di.min = state.current + '-01';
+      di.max = state.current + '-' + p2(new Date(Number(state.current.slice(0, 4)), Number(state.current.slice(5)), 0).getDate());
+      di.setAttribute('aria-label', '날짜 바꾸기');
+      di.addEventListener('change', function () {
+        if (!di.value) return;
+        it.date = di.value;
+        save();
+        mark(state.current, 'save');
+        renderMain();
+      });
+      d.appendChild(dt); d.appendChild(di);
       var m = document.createElement('span'); m.className = 'm' + (it.memo ? '' : ' none'); m.textContent = it.memo || '내용 없음';
+      var pb = document.createElement('button'); pb.className = 'p'; pb.type = 'button';
+      pb.textContent = PAYS[it.pay] || PAYS.etc; pb.setAttribute('aria-label', '결제 종류 바꾸기');
+      pb.addEventListener('click', function () {
+        var order = ['card', 'cash', 'etc'];
+        it.pay = order[(order.indexOf(it.pay) + 1) % 3];
+        save();
+        mark(state.current, 'save');
+        renderMain();
+      });
       var a = document.createElement('span'); a.className = 'a'; a.textContent = won(it.amount);
       var x = document.createElement('button'); x.className = 'x'; x.type = 'button'; x.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>'; x.setAttribute('aria-label', '삭제');
       x.addEventListener('click', function () {
@@ -479,7 +545,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
           renderMain();
         });
       });
-      li.appendChild(d); li.appendChild(m); li.appendChild(a); li.appendChild(x);
+      li.appendChild(d); li.appendChild(pb); li.appendChild(m); li.appendChild(a); li.appendChild(x);
       ul.appendChild(li);
     });
   }
@@ -735,6 +801,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
   selDate = defaultDate();
   updateDateUI();
   renderAmount();
+  renderPay();
   renderMain();
   updateNote();
   startCheck();
