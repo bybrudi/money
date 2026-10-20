@@ -54,6 +54,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 /* 라벨 */
 .label { margin: var(--gap) 4px 11px; font-size: 12px; line-height: 12px; color: var(--sub); display: flex; justify-content: space-between; align-items: flex-start; }
+.label.sortrow { justify-content: flex-start; align-items: center; gap: 1px; }
+.sortbtn { width: 30px; height: 28px; margin: -8px 0 -8px -2px; background: transparent; color: var(--sub); display: grid; place-items: center; border-radius: 4px; }
+.sortbtn:active { background: transparent; opacity: .4; }
+.sortbtn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .label.lead { height: 22px; align-items: center; margin-bottom: var(--gap2); }
 .datepill { position: relative; overflow: hidden; background: var(--btn); border-radius: 4px; height: 22px; padding: 0 11px; display: flex; align-items: center; line-height: 1; font-size: 12px; color: var(--text); }
 .datepill input { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; max-width: 100%; opacity: 0; font-size: 16px; border: 0; background: transparent; -webkit-appearance: none; appearance: none; }
@@ -95,7 +99,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .list .p { height: 24px; padding: 0 8px; border-radius: 4px; font-size: 12px; color: var(--sub); }
 .list .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
 .list .m.none { color: var(--sub); }
-.list .a { font-variant-numeric: tabular-nums; font-weight: 300; }
+.list .a { height: 36px; padding: 0 6px; margin: 0 -6px; background: transparent; text-align: right; font-variant-numeric: tabular-nums; font-weight: 300; }
+.list .a:active { background: transparent; opacity: .4; }
 .list .x { width: 40px; height: 44px; background: transparent; color: var(--sub); font-size: 18px; display: grid; place-items: center; border-radius: 4px; }
 .list .x:active { background: var(--btn); }
 .list .x svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
@@ -143,7 +148,17 @@ body.drawer-open .drawer { transform: none; visibility: visible; }
 
 /* 확인 시트 */
 .sheetback { z-index: 40; }
-body.sheet-open .sheetback { opacity: 1; visibility: visible; }
+body.sheet-open .sheetback, body.edit-open .sheetback { opacity: 1; visibility: visible; }
+
+/* 금액 수정 팝업 (키보드에 가리지 않게 위쪽에 띄움) */
+.editpop { position: fixed; left: 50%; top: 14vh; width: min(86vw, 340px); background: var(--bg); border-radius: 4px; box-shadow: 0 0 40px rgba(0,0,0,.14); overflow: hidden; z-index: 50; opacity: 0; visibility: hidden; transform: translate(-50%, -8px); transition: opacity .2s, transform .2s, visibility 0s linear .2s; }
+body.edit-open .editpop { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity .2s, transform .2s, visibility 0s; }
+.editpop p { margin: 0; padding: 18px 16px 10px; text-align: center; font-size: 13px; color: var(--sub); }
+.editpop input { display: block; width: calc(100% - 32px); height: 48px; margin: 0 16px 16px; padding: 0 16px; border: 0; border-radius: 4px; background: var(--btn); color: var(--text); text-align: right; font: inherit; font-size: 18px; -webkit-appearance: none; appearance: none; }
+.editbtns { display: grid; grid-template-columns: 1fr 1fr; }
+.editbtns button { height: 52px; font-size: 16px; background: var(--bg); border-top: 1px solid var(--line); }
+.editbtns button + button { border-left: 1px solid var(--line); }
+.editbtns button:active { background: var(--btn); }
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
   max-width: 480px; margin: 0 auto;
@@ -211,7 +226,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     <button data-k="C" class="op" aria-label="모두 지우기">C</button><button data-k="0">0</button><button data-k=".">.</button><button data-k="=" class="op eq" aria-label="계산"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5.5h11M2.5 10.5h11"/></svg></button>
   </div>
 
-  <div class="label"><span>내용</span></div>
+  <div class="label sortrow"><span>내용</span><button class="sortbtn" id="sortBtn" type="button"></button></div>
   <ul class="list" id="list"></ul>
 </main>
 
@@ -239,6 +254,14 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
 
 <!-- 확인 시트 -->
 <div class="back sheetback" id="sheetBack"></div>
+<div class="editpop" id="editPop" role="dialog" aria-modal="true" aria-label="금액 수정">
+  <p>금액 수정</p>
+  <input id="editInput" type="text" inputmode="numeric" autocomplete="off" aria-label="금액">
+  <div class="editbtns">
+    <button id="editNo" type="button">취소</button>
+    <button id="editSave" type="button">저장</button>
+  </div>
+</div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true">
   <div class="box">
     <p id="sheetMsg"></p>
@@ -329,6 +352,46 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
   });
   $('sheetNo').addEventListener('click', closeSheet);
   $('sheetBack').addEventListener('click', closeSheet);
+  $('sheetBack').addEventListener('click', function () { closeEdit(); });
+
+  /* ---------- 금액 수정 팝업 (숫자 키보드) ---------- */
+  var editItem = null;
+  function fmtDigits(str) {
+    var neg = /^\s*-/.test(str);
+    var d = str.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
+    if (!d) return neg ? '-' : '';
+    return (neg ? '-' : '') + d.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function openEdit(it) {
+    editItem = it;
+    var inp = $('editInput');
+    inp.value = fmtDigits(String(it.amount));
+    document.body.classList.add('edit-open');
+    inp.focus();
+    try { inp.setSelectionRange(0, inp.value.length); } catch (e) {}
+  }
+  function closeEdit() {
+    document.body.classList.remove('edit-open');
+    editItem = null;
+    $('editInput').blur();
+  }
+  $('editInput').addEventListener('input', function () { this.value = fmtDigits(this.value); });
+  $('editInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('editSave').click(); }
+  });
+  $('editNo').addEventListener('click', closeEdit);
+  $('editSave').addEventListener('click', function () {
+    if (!editItem) return;
+    var raw = $('editInput').value;
+    var n = parseInt(raw.replace(/[^\d]/g, ''), 10);
+    if (!n) { toast('금액을 입력해 주세요'); return; }
+    if (n > 1e12) { toast('금액이 너무 커요'); return; }
+    editItem.amount = /^-/.test(raw) ? -n : n;
+    save();
+    mark(state.current, 'save');
+    closeEdit();
+    renderMain();
+  });
 
   /* ---------- 날짜 ---------- */
   var selDate = '';
@@ -446,6 +509,23 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     renderAmount();
   });
 
+  /* ---------- 날짜 정렬 ---------- */
+  var UP_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10.5L8 6l4.5 4.5"/></svg>';
+  var DOWN_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5.5L8 10l4.5-4.5"/></svg>';
+  var sortDir = 'asc';
+  try { if (localStorage.getItem('ledger.sort') === 'desc') sortDir = 'desc'; } catch (e) {}
+  function renderSort() {
+    var b = $('sortBtn');
+    b.innerHTML = sortDir === 'asc' ? UP_SVG : DOWN_SVG;
+    b.setAttribute('aria-label', sortDir === 'asc' ? '날짜 오름차순. 누르면 내림차순' : '날짜 내림차순. 누르면 오름차순');
+  }
+  $('sortBtn').addEventListener('click', function () {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    try { localStorage.setItem('ledger.sort', sortDir); } catch (e) {}
+    renderSort();
+    renderMain();
+  });
+
   /* ---------- 결제 종류 ---------- */
   var PAYS = { card: '카드', cash: '현금', etc: '기타' };
   var curPay = 'card';
@@ -489,6 +569,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
     var items = state.months[state.current].slice().sort(function (a, b) {
       return a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id;
     });
+    if (sortDir === 'desc') items.reverse();
     var sum = 0;
     items.forEach(function (it) { sum += it.amount; });
     $('total').textContent = won(sum);
@@ -534,7 +615,9 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
         mark(state.current, 'save');
         renderMain();
       });
-      var a = document.createElement('span'); a.className = 'a'; a.textContent = won(it.amount);
+      var a = document.createElement('button'); a.className = 'a'; a.type = 'button'; a.textContent = won(it.amount);
+      a.setAttribute('aria-label', '금액 수정');
+      a.addEventListener('click', function () { openEdit(it); });
       var x = document.createElement('button'); x.className = 'x'; x.type = 'button'; x.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>'; x.setAttribute('aria-label', '삭제');
       x.addEventListener('click', function () {
         ask('이 내역을 삭제할까요?', '삭제', function () {
@@ -801,6 +884,7 @@ body.sheet-open .sheet { transform: none; visibility: visible; }
   selDate = defaultDate();
   updateDateUI();
   renderAmount();
+  renderSort();
   renderPay();
   renderMain();
   updateNote();
